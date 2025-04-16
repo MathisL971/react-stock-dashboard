@@ -27,8 +27,6 @@
 	  // Parse URL for routing
 	  const url = new URL(request.url);
 	  const path = url.pathname;
-
-	  console.log(`Received request for path: ${path}`);
 	  
 	  switch (path) {
 		case '/':
@@ -37,6 +35,10 @@
 			return this.handleStocksRoute(request, env);
 		case '/api/stock/lookup':
 			return this.handleStockLookupRoute(request, env);
+		case '/api/stock/quote':
+			return this.handleStockQuoteRoute(request, env);
+		case '/api/market-status':
+			return this.handleMarketStatusRoute(request, env);
 		default:
 			break;
 	  }
@@ -212,7 +214,155 @@
 		  }
 		);
 	  }
-	}
+	},
+
+	async handleStockQuoteRoute(
+		request: Request,
+		env: Env
+	): Promise<Response> {
+		// Only allow GET requests
+		if (request.method !== 'GET') {
+			return new Response(
+				JSON.stringify({ error: 'Method not allowed' }),
+				{ 
+					status: 405,
+					headers: { 
+						'Content-Type': 'application/json',
+						'Allow': 'GET'
+					}
+				}
+			);
+		}
+
+		// Parse URL and get the symbol parameter
+		const url = new URL(request.url);
+		const symbol = url.searchParams.get('symbol');
+  
+		// Validate symbol parameter
+		if (!symbol) {
+			return new Response(
+				JSON.stringify({ error: 'Missing symbol parameter' }), 
+				{ 
+					status: 400,
+					headers: { 'Content-Type': 'application/json' }
+				}
+			);
+		}
+
+		// Check for API key in environment
+		if (!env.FINNHUB_API_KEY) {
+			return new Response(
+				JSON.stringify({ error: 'API key not configured' }), 
+				{ 
+					status: 500,
+					headers: { 'Content-Type': 'application/json' }
+				}
+			);
+		}
+  
+		try {
+			// Fetch stock quote from Finnhub API
+			const apiUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${env.FINNHUB_API_KEY}`;
+			const finnhubResponse = await fetch(apiUrl);
+			
+			if (!finnhubResponse.ok) {
+				const errorText = await finnhubResponse.text();
+				throw new Error(`Finnhub API error: ${finnhubResponse.status} - ${errorText}`);
+			} 
+
+			const data = await finnhubResponse.json();
+			
+			// Return the data
+			return new Response(
+				JSON.stringify(data),
+				{ 
+					headers: { 
+						'Content-Type': 'application/json',
+						'Cache-Control': 'max-age=3600', // Cache for 1 hour
+						'Access-Control-Allow-Origin': '*' // Add CORS support
+					}
+				}
+			);
+		} catch (error) {
+			console.error('Error fetching stock quote:', error);
+			
+			return new Response(
+				JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+				{ 
+					status: 500,
+					headers: { 'Content-Type': 'application/json' }
+				}
+			);
+		}
+	},
+
+	async handleMarketStatusRoute(
+		request: Request,
+		env: Env
+	): Promise<Response> {
+		// Only allow GET requests
+		if (request.method !== 'GET') {
+			return new Response(
+				JSON.stringify({ error: 'Method not allowed' }),
+				{ 
+					status: 405,
+					headers: { 
+						'Content-Type': 'application/json',
+						'Allow': 'GET'
+					}
+				}
+			);
+		}
+
+		// Parse URL and get the exchange parameter
+		const url = new URL(request.url);
+		const exchange = url.searchParams.get('exchange');
+  
+		// Validate exchange parameter
+		if (!exchange) {
+			return new Response(
+				JSON.stringify({ error: 'Missing exchange parameter' }), 
+				{ 
+					status: 400,
+					headers: { 'Content-Type': 'application/json' }
+				}
+			);
+		}
+
+		// Check for API key in environment
+		if (!env.FINNHUB_API_KEY) {
+			return new Response(
+				JSON.stringify({ error: 'API key not configured' }), 
+				{ 
+					status: 500,
+					headers: { 'Content-Type': 'application/json' }
+				}
+			);
+		}
+  
+		// Fetch market status from Finnhub API
+		const apiUrl = `https://finnhub.io/api/v1/stock/market-status?exchange=${exchange}&token=${env.FINNHUB_API_KEY}`;
+		const finnhubResponse = await fetch(apiUrl);
+		
+		if (!finnhubResponse.ok) {
+			const errorText = await finnhubResponse.text();
+			throw new Error(`Finnhub API error: ${finnhubResponse.status} - ${errorText}`);
+		} 
+
+		const data = await finnhubResponse.json();
+		
+		// Return the data
+		return new Response(
+			JSON.stringify(data),
+			{ 
+				headers: { 
+					'Content-Type': 'application/json',
+					'Cache-Control': 'max-age=3600', // Cache for 1 hour
+					'Access-Control-Allow-Origin': '*' // Add CORS support
+				}
+			}
+		);	
+	},
   }
 
   

@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "dotenv": "^16.5.0",
-    "finnhub": "^1.2.19",
     "ws": "^8.18.1"
   }
 }

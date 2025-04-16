@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { StockSymbol } from "../types/types";
+import { StockExchangeCode, StockSymbol } from "../types/types";
 
 type StockSymbolSearchInputProps = {
     placeholder?: string
     searchTerm?: string
+    exchangeCode: StockExchangeCode
     onSelect: (symbol: StockSymbol) => void
 }
 
@@ -28,7 +29,7 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
         setError(null);
 
         try {
-            const response = await fetch(`http://localhost:8787/api/stock/lookup?query=${query}&exchange=US`);
+            const response = await fetch(`http://localhost:8787/api/stock/lookup?query=${query}&exchange=${props.exchangeCode}`);
 
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -43,7 +44,7 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [props.exchangeCode]);
 
     useEffect(() => {
         if (searchTerm.length === 0) {
@@ -66,7 +67,7 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
             setHighlightedIndex((prevIndex) => {
             const nextIndex = Math.min(prevIndex + 1, symbols.length - 1);
             if (listRef.current && listRef.current.children[nextIndex]) {
-                const highlightedItem = listRef.current.children[nextIndex];
+                const highlightedItem = listRef.current.children[nextIndex] as HTMLElement;
                 const listHeight = listRef.current.offsetHeight;
                 const itemBottom = highlightedItem.offsetTop + highlightedItem.offsetHeight;
                 if (itemBottom > listHeight) {
@@ -79,7 +80,7 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
             setHighlightedIndex((prevIndex) => {
             const nextIndex = Math.max(prevIndex - 1, 0);
             if (listRef.current && listRef.current.children[nextIndex]) {
-                const highlightedItem = listRef.current.children[nextIndex];
+                const highlightedItem = listRef.current.children[nextIndex] as HTMLElement;
                 const itemTop = highlightedItem.offsetTop;
                 // Check if the top of the item is above the visible scroll area
                 if (itemTop < listRef.current.scrollTop) {
@@ -111,6 +112,13 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [inputRef, dropdownRef]);
+
+    // Update results when exchange code changes
+    useEffect(() => {
+        if (searchTerm) {
+            lookupStock(searchTerm);
+        }
+    }, [props.exchangeCode])
 
     return (
         <div className="relative w-full md:w-96">

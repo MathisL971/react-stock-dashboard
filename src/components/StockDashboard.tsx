@@ -1,55 +1,85 @@
-import { useEffect, useRef } from "react";
-import { StockSymbol } from "../types/types";
+import { getStockQuote, getMarketStatus } from "../services/stocks";
+import { StockExchangeCode, StockSymbol } from "../types/types";
+import { useQuery } from "@tanstack/react-query";
 
 export default function StockDashboard({
+    exchangeCode,
     symbol
 }: {
-    symbol: StockSymbol | null
+    exchangeCode: StockExchangeCode,
+    symbol: StockSymbol
 }) {
-    const websocket = useRef<WebSocket | null>(null);
+    const stockQuoteQuery = useQuery({
+        queryKey: ['quote', symbol.symbol],
+        queryFn: () => getStockQuote(symbol.symbol),
+    });
+    const marketStatusQuery = useQuery({
+        queryKey: ['market-status', exchangeCode],
+        queryFn: () => getMarketStatus(exchangeCode),
+    });
 
-    useEffect(() => {
-        websocket.current = new WebSocket('ws://localhost:8080'); // Note: 'ws://' for non-secure local development
+    if (stockQuoteQuery.isLoading || marketStatusQuery.isLoading) {
+        return <p>Loading...</p>;
+    }
 
-        websocket.current.onopen = () => {
-            console.log('WebSocket connection opened');
-        };
-
-        websocket.current.onclose = event => {
-            console.log('WebSocket connection closed:', event.code, event.reason);
-        };
-
-        websocket.current.onmessage = event => {
-            const message = event.data;
-            console.log('Received message:', message);
-        };
-
-        websocket.current.onerror = error => {
-            console.error('WebSocket error:', error);
-        };
-        
-        return () => {
-            if (websocket.current && websocket.current.readyState === WebSocket.OPEN) {
-                console.log(`Closing WebSocket connection`);
-                websocket.current.close();
-            }
-        };
-    }, [])
-
-    useEffect(() => {
-        if (!symbol) return;
-
-        if (websocket.current && websocket.current.readyState === WebSocket.OPEN) {
-            websocket.current.send(JSON.stringify({ type: 'subscribe', symbol: symbol.symbol }));
+    if (stockQuoteQuery.isError || marketStatusQuery.isError) {
+        if (stockQuoteQuery.error instanceof Error) {
+            return <p>Error fetching stock quote: {stockQuoteQuery.error.message}</p>;
         }
-    }, [symbol]);
+        if (marketStatusQuery.error instanceof Error) {
+            return <p>Error fetching market status: {marketStatusQuery.error.message}</p>;
+        }
+        return <p>Error fetching stock quote and market status</p>;
+    }
 
-    if (!symbol) return <p className="text-gray-500 font-semibold text-md text-center my-auto">Enter a stock symbol to get started.</p>       
+    if (!stockQuoteQuery.data || !marketStatusQuery.data) {
+        return <p>No data</p>;
+    }
+    
+    const { c: current, h: high, l: low, o: open, pc: previousClose, d: change, dp: percentChange } = stockQuoteQuery.data;
+    // const { holiday, isOpen, session } = marketStatusQuery.data;
 
     return (
-        <div className="flex flex-col">
-            <p className="text-gray-500 font-semibold text-md">{symbol.type}</p>
-            <p className="font-bold text-3xl">{`${symbol.description} (${symbol.symbol})`}</p>
-        </div> 
+        <div className="flex flex-col gap-2">
+            <div className="flex flex-col">
+                <p className="text-gray-500 font-semibold text-md">{symbol.type}</p>
+                <p className="font-bold text-4xl">{`${symbol.description} (${symbol.symbol})`}</p>
+            </div>
+            <hr className="border-gray-200" />
+            <div className="flex flex-col">
+                <p className="text-gray-500 font-semibold text-md">Current Price</p>
+                <p className="font-bold text-3xl">{current}</p>
+                {/* TODO: Add change and percent change */}
+                <p className={change > 0 ? "text-green-500 font-semibold text-xl" : "text-red-500 font-semibold text-xl"}>
+                    {`${change > 0 ? '+' : ''}${change} (${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%)`}
+                </p>            
+            </div>
+            {/* Price History */}
+            <div className="flex flex-col w-full h-96 bg-gray-200 rounded">
+                {/* TODO: Add price history chart */}
+                <p className="text-gray-500 font-semibold text-md text-center my-auto">Price History</p>
+            </div>
+
+            {/* Additional Stock Information */}
+            <div className="flex flex-row justify-between">
+                <div className="flex flex-col">
+                    <p className="text-gray-500 font-semibold text-sm">Open</p>
+                    <p className="font-bold text-lg">${open}</p>
+                </div>
+                <div className="flex flex-col">
+                    <p className="text-gray-500 font-semibold text-sm">High</p>
+                    <p className="font-bold text-lg">${high}</p>
+                </div>
+                <div className="flex flex-col">
+                    <p className="text-gray-500 font-semibold text-sm">Low</p>
+                    <p className="font-bold text-lg">${low}</p>
+                </div>
+                <div className="flex flex-col">
+                    <p className="text-gray-500 font-semibold text-sm">Previous Close</p>
+                    <p className="font-bold text-lg">${previousClose}</p>
+                </div>
+            </div>
+        </div>
+        
     );
 }
