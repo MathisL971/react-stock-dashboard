@@ -1,63 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { StockExchangeCode, StockSymbol } from "../types/types";
+import { useEffect, useRef, useState } from "react";
+import { StockExchangeCode, StockSymbol } from "../types";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { deboundedSearchTermAtom, isDebouncingAtom, searchTermAtom, symbolsAtom } from "../atoms/dashboard";
 
 type StockSymbolSearchInputProps = {
     placeholder?: string
-    searchTerm?: string
     exchangeCode: StockExchangeCode
     onSelect: (symbol: StockSymbol) => void
 }
 
 export default function StockSymbolSearchInput(props: StockSymbolSearchInputProps) {
-    const [searchTerm, setSearchTerm] = useState(props.searchTerm ?? "");
-    const [symbols, setSymbols] = useState<StockSymbol[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const searchTerm = useAtomValue(searchTermAtom);
+    const setDebouncedSearchTerm = useSetAtom(deboundedSearchTermAtom);
+    const [{ data: symbols = [], isLoading, isError, error  }] = useAtom(symbolsAtom);
+    const isDebouncing = useAtomValue(isDebouncingAtom);
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
-    const [highlightedIndex, setHighlightedIndex] = useState(-1);
-
-    const lookupStock = useCallback(async (query: string) => {
-        if (!query) {
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            const response = await fetch(`http://localhost:8787/api/stock/lookup?query=${query}&exchange=${props.exchangeCode}`);
-
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-
-            const data = await response.json();
-
-            if (data.count !== 0) setSymbols(data.result);
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            setError('Error fetching data');
-        } finally {
-            setLoading(false);
-        }
-    }, [props.exchangeCode]);
 
     useEffect(() => {
-        if (searchTerm.length === 0) {
-            setSymbols([]);
-            setIsDropdownOpen(false);
-            return;
-        }
-
-        if (!isDropdownOpen) {
-            setIsDropdownOpen(true);
-        }
-
-        lookupStock(searchTerm);
+        setIsDropdownOpen(searchTerm !== '');
     }, [searchTerm]);
 
     const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -65,29 +30,29 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
 
         if (event.key === 'ArrowDown') {
             setHighlightedIndex((prevIndex) => {
-            const nextIndex = Math.min(prevIndex + 1, symbols.length - 1);
-            if (listRef.current && listRef.current.children[nextIndex]) {
-                const highlightedItem = listRef.current.children[nextIndex] as HTMLElement;
-                const listHeight = listRef.current.offsetHeight;
-                const itemBottom = highlightedItem.offsetTop + highlightedItem.offsetHeight;
-                if (itemBottom > listHeight) {
-                highlightedItem.scrollIntoView({ block: 'end' });
+                const nextIndex = Math.min(prevIndex + 1, symbols.length - 1);
+                if (listRef.current && listRef.current.children[nextIndex]) {
+                    const highlightedItem = listRef.current.children[nextIndex] as HTMLElement;
+                    const listHeight = listRef.current.offsetHeight;
+                    const itemBottom = highlightedItem.offsetTop + highlightedItem.offsetHeight;
+                    if (itemBottom > listHeight) {
+                        highlightedItem.scrollIntoView({ block: 'end' });
+                    }
                 }
-            }
-            return nextIndex;
+                return nextIndex;
             });
         } else if (event.key === 'ArrowUp') {
             setHighlightedIndex((prevIndex) => {
-            const nextIndex = Math.max(prevIndex - 1, 0);
-            if (listRef.current && listRef.current.children[nextIndex]) {
-                const highlightedItem = listRef.current.children[nextIndex] as HTMLElement;
-                const itemTop = highlightedItem.offsetTop;
-                // Check if the top of the item is above the visible scroll area
-                if (itemTop < listRef.current.scrollTop) {
-                highlightedItem.scrollIntoView({ block: 'start' });
+                const nextIndex = Math.max(prevIndex - 1, 0);
+                if (listRef.current && listRef.current.children[nextIndex]) {
+                    const highlightedItem = listRef.current.children[nextIndex] as HTMLElement;
+                    const itemTop = highlightedItem.offsetTop;
+                    // Check if the top of the item is above the visible scroll area
+                    if (itemTop < listRef.current.scrollTop) {
+                        highlightedItem.scrollIntoView({ block: 'start' });
+                    }
                 }
-            }
-            return nextIndex;
+                return nextIndex;
             });
         } else if (event.key === 'Enter') {
             if (highlightedIndex >= 0 && highlightedIndex < symbols.length) {
@@ -113,32 +78,18 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
         };
     }, [inputRef, dropdownRef]);
 
-    // Update results when exchange code changes
-    useEffect(() => {
-        if (searchTerm) {
-            lookupStock(searchTerm);
-        }
-    }, [props.exchangeCode])
-
     return (
         <div className="relative w-full md:w-96">
-            {
-                error &&
-                <div className="text-red-500 text-xs mt-2">{error}</div>
-            }
+            {isError &&<div className="text-red-500 text-xs mt-2">{error.message}</div>}
             <input
                 ref={inputRef}
                 type="text"
                 placeholder={props.placeholder ?? "Search..."}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 value={searchTerm}
-                onChange={(e) => {
-                    setSearchTerm(e.target.value)
-                }}
+                onChange={(e) => setDebouncedSearchTerm(e.target.value)}
                 onKeyDown={handleKeyDown}
-                onFocus={() => {
-                    if (!isDropdownOpen && searchTerm) setIsDropdownOpen(true);
-                }}
+                onFocus={() => {if (!isDropdownOpen && searchTerm) setIsDropdownOpen(true)}}
             />
             {isDropdownOpen &&
                 <div
@@ -157,14 +108,14 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
                                 }`}
                                 onClick={() => {
                                     props.onSelect(s)
-                                    setSearchTerm('')
+                                    setDebouncedSearchTerm('')
                                 }}
                             >
                                 {s.description}{' ('}{s.displaySymbol}{')'}
                             </li>
                         ))}
                         {symbols.length === 0 && searchTerm.length > 0 && (
-                            <li className="px-4 py-2 text-gray-500">{loading ? 'Loading...' : 'No results found'}</li>
+                            <li className="px-4 py-2 text-gray-500">{isLoading || isDebouncing ? 'Loading...' : 'No results found'}</li>
                         )}
                     </ul>
                 </div>

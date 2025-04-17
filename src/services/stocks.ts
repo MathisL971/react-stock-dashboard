@@ -1,5 +1,11 @@
-import { MarketStatus, StockExchangeCode, StockQuote } from "../types/types";
+import { MarketStatus, StockExchangeCode, StockQuote, StockSymbol } from "../types";
 import axios from "axios";
+
+export async function getSymbols(exchangeCode: StockExchangeCode, searchTerm: string): Promise<StockSymbol[]> {
+    console.log(`Getting symbols for exchange ${exchangeCode} and search term ${searchTerm}`);
+    const response = await axios.get(`http://localhost:8787/api/stock/lookup?query=${searchTerm}&exchange=${exchangeCode}`);
+    return response.data.result;
+}
 
 export async function getStockQuote(symbol: string): Promise<StockQuote> {
     const response = await axios.get(`http://localhost:8787/api/stock/quote?symbol=${symbol}`);

@@ -1,5 +1,5 @@
 import { getStockQuote, getMarketStatus } from "../services/stocks";
-import { StockExchangeCode, StockSymbol } from "../types/types";
+import { StockExchangeCode, StockSymbol } from "../types";
 import { useQuery } from "@tanstack/react-query";
 
 export default function StockDashboard({
@@ -80,6 +80,5 @@ export default function StockDashboard({
                 </div>
             </div>
         </div>
-        
     );
 }

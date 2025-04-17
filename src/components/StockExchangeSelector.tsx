@@ -1,4 +1,4 @@
-import { StockExchange, StockExchangeCode } from "../types/types"
+import { StockExchange, StockExchangeCode } from "../types"
 
 const exchanges: StockExchange[] = [
     { name: "NYSE/NASDAQ", country: "US", country_name: "US", code: "US" },

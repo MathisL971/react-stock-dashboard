@@ -1,50 +1,36 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect } from "react";
 import StockSymbolSearchInput from "./StockSymbolSearchInput";
 import StockDashboard from "./StockDashboard";
-import { StockExchangeCode, StockSymbol } from "../types/types";
 import StockExchangeSelector from "./StockExchangeSelector";
+import useWebSocket from "../hooks/useWebSocket";
+import { useAtom } from "jotai";
+import { exchangeCodeAtom, symbolAtom } from "../atoms/dashboard";
 
 export default function StockSearchPage() {
-    const [exchangeCode, setExchangeCode] = useState<StockExchangeCode>('US');
-    const [symbol, setSymbol] = useState<StockSymbol | null>(null);
+    const [exchangeCode, setExchangeCode] = useAtom(exchangeCodeAtom);
+    const [symbol, setSymbol] = useAtom(symbolAtom);
 
-    const websocket = useRef<WebSocket | null>(null);
-    
-    useEffect(() => {
-        websocket.current = new WebSocket('ws://localhost:8080'); // Note: 'ws://' for non-secure local development
+    const onOpen = useCallback((event: Event) => {
+        console.log('WebSocket connection opened:', event);
+    }, []);
 
-        websocket.current.onopen = () => {
-            console.log('WebSocket connection opened');
-        };
+    const onClose = useCallback((event: CloseEvent) => {
+        console.log('WebSocket connection closed:', event);
+    }, []);
 
-        websocket.current.onclose = event => {
-            console.log('WebSocket connection closed:', event.code, event.reason);
-        };
+    const onMessage = useCallback((event: MessageEvent) => {
+        console.log('Received message:', event.data);
+    }, []);
 
-        websocket.current.onmessage = event => {
-            const message = event.data;
-            console.log('Received message:', message);
-        };
+    const onError = useCallback((error: Event) => {
+        console.error('WebSocket error:', error);
+    }, []);
 
-        websocket.current.onerror = error => {
-            console.error('WebSocket error:', error);
-        };
-        
-        return () => {
-            if (websocket.current && websocket.current.readyState === WebSocket.OPEN) {
-                console.log(`Closing WebSocket connection`);
-                websocket.current.close();
-            }
-        };
-    }, [])
+    const { isConnected, send } = useWebSocket({ onOpen, onClose, onMessage, onError });
 
     useEffect(() => {
-        if (!symbol) return;
-
-        if (websocket.current && websocket.current.readyState === WebSocket.OPEN) {
-            websocket.current.send(JSON.stringify({ type: 'subscribe', symbol: symbol.symbol }));
-        }
-    }, [symbol]);
+        if (symbol && isConnected) send(JSON.stringify({'type':'subscribe', 'symbol': symbol}));
+    }, [symbol, isConnected, send]);
 
     return (
         <div className="flex flex-col gap-2 flex-grow">
