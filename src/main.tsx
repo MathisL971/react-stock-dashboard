@@ -18,6 +18,9 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route element={<MainLayout />}>
             <Route path='/' element={<StockSearchPage />} />
+
+            {/* 404 Route */}
+            <Route path='*' element={<div>404 - Page Not Found</div>} />
           </Route>
         </Routes>
       </BrowserRouter>      

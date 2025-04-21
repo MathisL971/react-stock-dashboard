@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { StockExchangeCode, StockSymbol } from "../types";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { deboundedSearchTermAtom, isDebouncingAtom, searchTermAtom, symbolsAtom } from "../atoms/dashboard";
+import { useQueryClient } from "@tanstack/react-query";
+import { getStockQuote } from "../services/stocks";
+import { toast } from "sonner";
 
 type StockSymbolSearchInputProps = {
     placeholder?: string
@@ -10,11 +13,11 @@ type StockSymbolSearchInputProps = {
 }
 
 export default function StockSymbolSearchInput(props: StockSymbolSearchInputProps) {
+    const queryClient = useQueryClient();
     const searchTerm = useAtomValue(searchTermAtom);
     const setDebouncedSearchTerm = useSetAtom(deboundedSearchTermAtom);
-    const [{ data: symbols = [], isLoading, isError, error  }] = useAtom(symbolsAtom);
+    const [{ data: symbols = [], isLoading, error, failureCount }] = useAtom(symbolsAtom);
     const isDebouncing = useAtomValue(isDebouncingAtom);
-
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -24,6 +27,31 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
     useEffect(() => {
         setIsDropdownOpen(searchTerm !== '');
     }, [searchTerm]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+                inputRef.current && !inputRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [inputRef, dropdownRef]);
+
+    useEffect(() => {
+        if (error) {
+            console.error(error);
+            toast.error("An error occurred", { description: "It looks like we were not able to get the stock data. Refresh the page and try again." })
+        };
+    }, [error]);
+
+    useEffect(() => {
+        if (failureCount === 1) toast.error("Something's not right", { description: "Wait a few seconds while we try again." });
+    }, [failureCount])
 
     const handleKeyDown = (event: React.KeyboardEvent) => {
         if (!isDropdownOpen) return;
@@ -62,25 +90,9 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
             setIsDropdownOpen(false);
         }
     };
-    
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
-                inputRef.current && !inputRef.current.contains(event.target as Node)) {
-                setIsDropdownOpen(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [inputRef, dropdownRef]);
 
     return (
         <div className="relative w-full md:w-96">
-            {isError &&<div className="text-red-500 text-xs mt-2">{error.message}</div>}
             <input
                 ref={inputRef}
                 type="text"
@@ -104,12 +116,17 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
                             <li
                                 key={s.symbol}
                                 className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${
-                                i === highlightedIndex ? 'bg-indigo-100 text-indigo-700' : ''
+                                i === highlightedIndex ? 'bg-gray-100' : ''
                                 }`}
                                 onClick={() => {
                                     props.onSelect(s)
                                     setDebouncedSearchTerm('')
                                 }}
+                                onMouseEnter={() => queryClient.prefetchQuery({
+                                    queryKey: ['quote', s.symbol],
+                                    queryFn: () => getStockQuote(s.symbol),
+                                    staleTime: 60000
+                                })}
                             >
                                 {s.description}{' ('}{s.displaySymbol}{')'}
                             </li>

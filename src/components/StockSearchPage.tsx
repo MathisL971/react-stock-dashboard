@@ -29,7 +29,7 @@ export default function StockSearchPage() {
     const { isConnected, send } = useWebSocket({ onOpen, onClose, onMessage, onError });
 
     useEffect(() => {
-        if (symbol && isConnected) send(JSON.stringify({'type':'subscribe', 'symbol': symbol}));
+        if (symbol && isConnected) send(JSON.stringify({'type':'subscribe', 'symbol': symbol.symbol}));
     }, [symbol, isConnected, send]);
 
     return (

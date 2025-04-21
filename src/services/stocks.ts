@@ -2,7 +2,6 @@ import { MarketStatus, StockExchangeCode, StockQuote, StockSymbol } from "../typ
 import axios from "axios";
 
 export async function getSymbols(exchangeCode: StockExchangeCode, searchTerm: string): Promise<StockSymbol[]> {
-    console.log(`Getting symbols for exchange ${exchangeCode} and search term ${searchTerm}`);
     const response = await axios.get(`http://localhost:8787/api/stock/lookup?query=${searchTerm}&exchange=${exchangeCode}`);
     return response.data.result;
 }

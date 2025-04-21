@@ -1,4 +1,6 @@
 import { StockExchange, StockExchangeCode } from "../types"
+import { useQuery } from "@tanstack/react-query";
+import { getMarketStatus } from "../services/stocks";
 
 const exchanges: StockExchange[] = [
     { name: "NYSE/NASDAQ", country: "US", country_name: "US", code: "US" },
@@ -22,6 +24,12 @@ export default function StockExchangeSelector({
         onSelect: (exchangeCode: StockExchangeCode) => void
     }
 ) {
+    useQuery({
+        queryKey: ['market-status', defaultExchangeCode],
+        queryFn: () => getMarketStatus(defaultExchangeCode),
+        notifyOnChangeProps: [],
+    });
+
     return (
         <select
             onChange={(event) => onSelect(event.target.value as StockExchangeCode)}
@@ -31,7 +39,7 @@ export default function StockExchangeSelector({
             className="px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
         >
             {exchanges.map((exchange) => (
-                <option key={exchange.name} value={exchange.code}>
+                <option key={exchange.name} value={exchange.code} disabled={exchange.code !== 'US'}>
                     {exchange.name}
                 </option>
             ))}
