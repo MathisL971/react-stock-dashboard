@@ -3,12 +3,17 @@ import StockSymbolSearchInput from "./StockSymbolSearchInput";
 import StockDashboard from "./StockDashboard";
 import StockExchangeSelector from "./StockExchangeSelector";
 import useWebSocket from "../hooks/useWebSocket";
-import { useAtom } from "jotai";
-import { exchangeCodeAtom, symbolAtom } from "../atoms/dashboard";
+import { useAtom, useSetAtom  } from "jotai";
+import { currentPriceBgColorAtom, exchangeCodeAtom, realTimeQuoteAtom, tickerAtom } from "../atoms/dashboard";
+import { StockExchangeCode } from "@/types";
+import useQueryParameters from "@/hooks/useQueryParameters";
 
 export default function StockSearchPage() {
     const [exchangeCode, setExchangeCode] = useAtom(exchangeCodeAtom);
-    const [symbol, setSymbol] = useAtom(symbolAtom);
+    const [ticker, setTicker] = useAtom(tickerAtom);
+    const setRealTimeQuote = useSetAtom(realTimeQuoteAtom);
+    const setCurrentPriceBgColor = useSetAtom(currentPriceBgColorAtom);
+    const queryParams = useQueryParameters();
 
     const onOpen = useCallback((event: Event) => {
         console.log('WebSocket connection opened:', event);
@@ -18,9 +23,36 @@ export default function StockSearchPage() {
         console.log('WebSocket connection closed:', event);
     }, []);
 
-    const onMessage = useCallback((event: MessageEvent) => {
-        console.log('Received message:', event.data);
-    }, []);
+    const onMessage = useCallback((event: MessageEvent) => {        
+        if (typeof event.data !== 'string') {
+            console.error('Received non-string data:', event.data);
+            return;
+        }
+
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'price_update') {
+            setRealTimeQuote((prevRealTimeQuote) => {
+                if (!prevRealTimeQuote) return null;
+
+                const newPrice = Math.round(data.price * 100) / 100;
+
+                if (newPrice > prevRealTimeQuote.c) setCurrentPriceBgColor('green');
+                else if (newPrice < prevRealTimeQuote.c) setCurrentPriceBgColor('red');
+                else setCurrentPriceBgColor(null);
+                
+                return {
+                    ...prevRealTimeQuote,
+                    c: newPrice,
+                    h: prevRealTimeQuote.h > newPrice ? prevRealTimeQuote.h : newPrice,
+                    l: prevRealTimeQuote.l < newPrice ? prevRealTimeQuote.l : newPrice,
+                    dp: (newPrice / prevRealTimeQuote.pc - 1) * 100,
+                    d: newPrice - prevRealTimeQuote.pc,
+                    t: data.t
+                }
+            });
+        }
+    }, [setRealTimeQuote, setCurrentPriceBgColor]);
 
     const onError = useCallback((error: Event) => {
         console.error('WebSocket error:', error);
@@ -29,18 +61,23 @@ export default function StockSearchPage() {
     const { isConnected, send } = useWebSocket({ onOpen, onClose, onMessage, onError });
 
     useEffect(() => {
-        if (symbol && isConnected) send(JSON.stringify({'type':'subscribe', 'symbol': symbol.symbol}));
-    }, [symbol, isConnected, send]);
+        if (ticker && isConnected) send(JSON.stringify({'type':'subscribe', 'symbol': ticker}));
+    }, [ticker, isConnected, send]);
+    
+    useEffect(() => {
+        if (queryParams.has('ticker')) setTicker(queryParams.get('ticker') as string);
+        if (queryParams.has('exchange')) setExchangeCode(queryParams.get('exchange') as StockExchangeCode);
+    }, [queryParams, setTicker, setExchangeCode]);
 
     return (
         <div className="flex flex-col gap-2 flex-grow">
             <div className="flex flex-row gap-2">
                 <StockExchangeSelector defaultExchangeCode={exchangeCode} onSelect={setExchangeCode} />
-                <StockSymbolSearchInput exchangeCode={exchangeCode} onSelect={setSymbol} />
+                <StockSymbolSearchInput exchangeCode={exchangeCode} onSelect={setTicker} />
             </div>
             <hr className="text-gray-200" />
-            {symbol 
-                ? <StockDashboard exchangeCode={exchangeCode} symbol={symbol} /> 
+            {ticker 
+                ? <StockDashboard exchangeCode={exchangeCode} ticker={ticker} /> 
                 : <p className="text-gray-500 font-semibold text-md text-center my-auto">Enter a stock symbol to get started.</p>}
         </div>
     );

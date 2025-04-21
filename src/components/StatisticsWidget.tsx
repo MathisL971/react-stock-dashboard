@@ -1,16 +1,15 @@
 import { getStockQuote } from "@/services/stocks";
-import { StockSymbol } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export default function StatisticsWidget({
-    symbol
+    ticker
 }: {
-    symbol: StockSymbol
+    ticker: string
 }) {
     const { data, isLoading, isError, error } = useQuery({
-        queryKey: ['quote', symbol.symbol],
-        queryFn: () => getStockQuote(symbol.symbol),
+        queryKey: ['quote', ticker],
+        queryFn: () => getStockQuote(ticker),
     });
 
     if (isLoading) return;

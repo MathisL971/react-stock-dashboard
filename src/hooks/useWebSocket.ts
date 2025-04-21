@@ -45,7 +45,7 @@ function useWebSocket(options: WebSocketOptions) {
     }, [onOpen, onMessage, onClose, onError]);
 
     const send = (data: string) => {
-        if (websocket.current && isConnected) {
+        if (websocket.current && websocket.current.readyState === WebSocket.OPEN && isConnected) {
             websocket.current.send(data);
         }
     }

@@ -1,16 +1,32 @@
-import { StockExchangeCode, StockSymbol } from "../types";
+import { StockExchangeCode } from "../types";
 import MarketStatus from "./MarketStatus";
 import ChartWidget from "./ChatWidget";
 import StatisticsWidget from "./StatisticsWidget";
 import StockPriceWidget from "./StockPriceWidget";
+import { useQuery } from "@tanstack/react-query";
+import { getSymbol } from "@/services/stocks";
+import { toast } from "sonner";
+import LoadingSpinner from "./utils/Spinner";
 
 export default function StockDashboard({
     exchangeCode,
-    symbol
+    ticker
 }: {
     exchangeCode: StockExchangeCode,
-    symbol: StockSymbol
+    ticker: string
 }) {
+    const { data: symbol, isLoading, isError, error } = useQuery({
+        queryKey: ['symbol', exchangeCode, ticker],
+        queryFn: () => getSymbol(exchangeCode, ticker),
+    });
+
+    if (isLoading) return <LoadingSpinner />;
+    if (isError || !symbol) {
+        if (error) console.error(error);
+        toast("An error occurred", { description: "It looks like we were not able to get the stock data. Refresh the page and try again." })
+        return;
+    }
+    
     return (
         <div className="flex flex-col gap-2">
             <div className="flex flex-col">
@@ -19,9 +35,9 @@ export default function StockDashboard({
                 <p className="text-gray-400 text-md">{symbol.type}</p>
             </div>
             <hr className="border-gray-200" />
-            <StockPriceWidget />            
+            <StockPriceWidget ticker={ticker} exchangeCode={exchangeCode} />            
             <ChartWidget />
-            <StatisticsWidget symbol={symbol} />
+            <StatisticsWidget ticker={ticker} />
         </div>
     );
 }

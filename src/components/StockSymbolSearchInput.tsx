@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { StockExchangeCode, StockSymbol } from "../types";
+import { StockExchangeCode } from "../types";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { deboundedSearchTermAtom, isDebouncingAtom, searchTermAtom, symbolsAtom } from "../atoms/dashboard";
 import { useQueryClient } from "@tanstack/react-query";
 import { getStockQuote } from "../services/stocks";
 import { toast } from "sonner";
+import useQueryParameters from "@/hooks/useQueryParameters";
 
 type StockSymbolSearchInputProps = {
     placeholder?: string
     exchangeCode: StockExchangeCode
-    onSelect: (symbol: StockSymbol) => void
+    onSelect: (ticker: string) => void
 }
 
 export default function StockSymbolSearchInput(props: StockSymbolSearchInputProps) {
@@ -23,6 +24,8 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
+
+    const queryParams = useQueryParameters();
 
     useEffect(() => {
         setIsDropdownOpen(searchTerm !== '');
@@ -84,7 +87,9 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
             });
         } else if (event.key === 'Enter') {
             if (highlightedIndex >= 0 && highlightedIndex < symbols.length) {
-                props.onSelect(symbols[highlightedIndex]);
+                props.onSelect(symbols[highlightedIndex].symbol);
+                // Add symbol to query params
+                queryParams.set('ticker', symbols[highlightedIndex].symbol);
             }
         } else if (event.key === 'Escape') {
             setIsDropdownOpen(false);
@@ -119,7 +124,8 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
                                 i === highlightedIndex ? 'bg-gray-100' : ''
                                 }`}
                                 onClick={() => {
-                                    props.onSelect(s)
+                                    props.onSelect(s.symbol)
+                                    queryParams.set('ticker', s.symbol)
                                     setDebouncedSearchTerm('')
                                 }}
                                 onMouseEnter={() => queryClient.prefetchQuery({

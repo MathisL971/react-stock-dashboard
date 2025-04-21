@@ -25,13 +25,14 @@ socket.addEventListener('message', function (event) {
     const data = JSON.parse(event.data);
     
     if (data.type === 'trade') {
-        data.data.forEach((trade: { s: string; p: number; }) => {
+        data.data.forEach((trade: { s: string; p: number; t: number }) => {
             const symbol = trade.s;
             const price = trade.p;
+            const timestamp = trade.t;
             // Forward the price update to all clients subscribed to this symbol
             for (const [client, clientSubscription] of subscriptions.entries()) {
                 if (clientSubscription === symbol && client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: 'price_update', symbol: symbol, price: price }));
+                    client.send(JSON.stringify({ type: 'price_update', symbol: symbol, price: price, timestamp: timestamp }));
                 }
             }
         });

@@ -75,6 +75,7 @@
 	  // Parse URL and get the exchange parameter
 	  const url = new URL(request.url);
 	  const exchange = url.searchParams.get('exchange');
+	  const ticker = url.searchParams.get('ticker');
   
 	  // Validate exchange parameter
 	  if (!exchange) {
@@ -109,6 +110,19 @@
 		}
 		
 		const data: Stock[] = await finnhubResponse.json();
+
+		if (ticker) {
+			return new Response(
+				JSON.stringify(data.find((stock) => stock.symbol === ticker)),
+				{
+					headers: {
+						'Content-Type': 'application/json',
+						'Cache-Control': 'max-age=3600', // Cache for 1 hour
+						'Access-Control-Allow-Origin': '*', // Add CORS support
+					}
+				}
+			)
+		}
 		
 		// Return the index as JSON
 		return new Response(
