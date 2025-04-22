@@ -1,6 +1,24 @@
-import { StockExchange, StockExchangeCode } from "../types"
-import { useQuery } from "@tanstack/react-query";
-import { getMarketStatus } from "../services/stocks";
+import * as React from "react"
+import { Check, ChevronsUpDown } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { StockExchange, StockExchangeCode } from "@/types"
+import { useQuery } from "@tanstack/react-query"
+import { getMarketStatus } from "@/services/stocks"
 
 const exchanges: StockExchange[] = [
     { name: "NYSE/NASDAQ", country: "US", country_name: "US", code: "US" },
@@ -16,33 +34,67 @@ const exchanges: StockExchange[] = [
     { name: "AUSTRALIAN SECURITIES EXCHANGE", country: "AU", country_name: "Australia", code: "ASX" }, // Using a common abbreviation
 ];
 
-export default function StockExchangeSelector({ 
-        defaultExchangeCode = 'US', 
-        onSelect, 
-    } : { 
-        defaultExchangeCode?: StockExchangeCode, 
-        onSelect: (exchangeCode: StockExchangeCode) => void
-    }
-) {
-    useQuery({
-        queryKey: ['market-status', defaultExchangeCode],
-        queryFn: () => getMarketStatus(defaultExchangeCode),
-        notifyOnChangeProps: [],
-    });
+export default function StockExchangeSelector({
+    defaultExchangeCode = 'US', 
+    onSelect, 
+}: {
+    defaultExchangeCode?: StockExchangeCode, 
+    onSelect: (exchangeCode: StockExchangeCode) => void
+}) {
+  const [selected, setSelected] = React.useState(defaultExchangeCode)
+  const [open, setOpen] = React.useState(false)
 
-    return (
-        <select
-            onChange={(event) => onSelect(event.target.value as StockExchangeCode)}
-            value={defaultExchangeCode}
-            name="exchange"
-            id="exchange"
-            className="px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+  useQuery({
+    queryKey: ['market-status', defaultExchangeCode],
+    queryFn: () => getMarketStatus(defaultExchangeCode),
+    notifyOnChangeProps: [],
+  });
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-[200px] justify-between"
         >
-            {exchanges.map((exchange) => (
-                <option key={exchange.name} value={exchange.code} disabled={exchange.code !== 'US'}>
-                    {exchange.name}
-                </option>
-            ))}
-        </select>
-    )
+          {selected
+            ? exchanges.find((exchange) => exchange.code === selected)?.name
+            : "Select exchange..."}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-0">
+        <Command>
+          <CommandInput placeholder="Search framework..." />
+          <CommandList>
+            <CommandEmpty>No exchange found.</CommandEmpty>
+            <CommandGroup>
+              {exchanges.map((exchange) => (
+                <CommandItem
+                  key={exchange.code}
+                  value={exchange.code}
+                  onSelect={(currentValue) => {
+                    onSelect(currentValue as StockExchangeCode)
+                    setSelected(currentValue as StockExchangeCode)
+                    setOpen(false)
+                  }}
+                  disabled={exchange.code !== 'US'}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selected === exchange.code ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {exchange.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
 }

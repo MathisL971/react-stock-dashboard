@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Route, Routes } from "react-router";
 import MainLayout from './components/MainLayout.tsx';
 import StockSearchPage from './components/StockSearchPage.tsx';
+import NotFound from './components/utils/NotFound.tsx';
 
 scan({
   enabled: true
@@ -20,7 +21,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path='/' element={<StockSearchPage />} />
 
             {/* 404 Route */}
-            <Route path='*' element={<div>404 - Page Not Found</div>} />
+            <Route path='*' element={<NotFound />} />
           </Route>
         </Routes>
       </BrowserRouter>      

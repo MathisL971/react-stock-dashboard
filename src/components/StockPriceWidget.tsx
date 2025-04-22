@@ -3,7 +3,7 @@ import { getMarketStatus, getStockQuote } from "@/services/stocks";
 import { StockExchangeCode } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { useAtom } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 export default function StockPriceWidget({
@@ -24,6 +24,7 @@ export default function StockPriceWidget({
 
     const [currentPriceBgColor, setCurrentPriceBgColor] = useAtom(currentPriceBgColorAtom);
     const [realTimeQuote, setRealTimeQuote] = useAtom(realTimeQuoteAtom);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         if (quote.data) setRealTimeQuote({
@@ -33,10 +34,26 @@ export default function StockPriceWidget({
 
     useEffect(() => {
         if (currentPriceBgColor) {
-            setTimeout(() => {
+            // Clear any existing timeout first
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+            }
+            
+            // Set new timeout and store its ID
+            timeoutRef.current = setTimeout(() => {
                 setCurrentPriceBgColor(null);
+                timeoutRef.current = null;
             }, 500);
-        }  
+        }
+        
+        // Clean up on unmount
+        return () => {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+            }
+        };
     }, [currentPriceBgColor, setCurrentPriceBgColor]);
 
     if (marketStatus.isLoading || quote.isLoading) return;

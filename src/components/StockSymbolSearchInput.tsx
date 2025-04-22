@@ -6,6 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getStockQuote } from "../services/stocks";
 import { toast } from "sonner";
 import useQueryParameters from "@/hooks/useQueryParameters";
+import { Input } from "./ui/input";
+import LoadingDots from "./utils/LoadingDots";
 
 type StockSymbolSearchInputProps = {
     placeholder?: string
@@ -97,12 +99,12 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
     };
 
     return (
-        <div className="relative w-full md:w-96">
-            <input
+        <div className="relative w-full">
+            <Input
                 ref={inputRef}
+                className="bg-white"
                 type="text"
                 placeholder={props.placeholder ?? "Search..."}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 value={searchTerm}
                 onChange={(e) => setDebouncedSearchTerm(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -137,10 +139,13 @@ export default function StockSymbolSearchInput(props: StockSymbolSearchInputProp
                                 {s.description}{' ('}{s.displaySymbol}{')'}
                             </li>
                         ))}
-                        {symbols.length === 0 && searchTerm.length > 0 && (
-                            <li className="px-4 py-2 text-gray-500">{isLoading || isDebouncing ? 'Loading...' : 'No results found'}</li>
-                        )}
+                        
                     </ul>
+                    {searchTerm.length > 0 && symbols.length === 0 && (
+                        <div className="px-4 py-2 text-gray-500 flex justify-center">
+                            {isLoading || isDebouncing ? <LoadingDots /> : <p className="font-light">No stocks found</p>}
+                        </div>
+                    )}
                 </div>
             }
         </div>

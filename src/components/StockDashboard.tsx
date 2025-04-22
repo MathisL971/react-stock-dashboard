@@ -1,12 +1,12 @@
 import { StockExchangeCode } from "../types";
 import MarketStatus from "./MarketStatus";
-import ChartWidget from "./ChatWidget";
+import ChartWidget from "./ChartWidget";
 import StatisticsWidget from "./StatisticsWidget";
 import StockPriceWidget from "./StockPriceWidget";
 import { useQuery } from "@tanstack/react-query";
 import { getSymbol } from "@/services/stocks";
 import { toast } from "sonner";
-import LoadingSpinner from "./utils/Spinner";
+import LoadingDots from "./utils/LoadingDots";
 
 export default function StockDashboard({
     exchangeCode,
@@ -20,7 +20,7 @@ export default function StockDashboard({
         queryFn: () => getSymbol(exchangeCode, ticker),
     });
 
-    if (isLoading) return <LoadingSpinner />;
+    if (isLoading) return <LoadingDots />;
     if (isError || !symbol) {
         if (error) console.error(error);
         toast("An error occurred", { description: "It looks like we were not able to get the stock data. Refresh the page and try again." })

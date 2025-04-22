@@ -7,6 +7,7 @@ import { useAtom, useSetAtom  } from "jotai";
 import { currentPriceBgColorAtom, exchangeCodeAtom, realTimeQuoteAtom, tickerAtom } from "../atoms/dashboard";
 import { StockExchangeCode } from "@/types";
 import useQueryParameters from "@/hooks/useQueryParameters";
+import EmptyStockDashboard from "./EmptyStockDashboard";
 
 export default function StockSearchPage() {
     const [exchangeCode, setExchangeCode] = useAtom(exchangeCodeAtom);
@@ -39,7 +40,6 @@ export default function StockSearchPage() {
 
                 if (newPrice > prevRealTimeQuote.c) setCurrentPriceBgColor('green');
                 else if (newPrice < prevRealTimeQuote.c) setCurrentPriceBgColor('red');
-                else setCurrentPriceBgColor(null);
                 
                 return {
                     ...prevRealTimeQuote,
@@ -78,7 +78,8 @@ export default function StockSearchPage() {
             <hr className="text-gray-200" />
             {ticker 
                 ? <StockDashboard exchangeCode={exchangeCode} ticker={ticker} /> 
-                : <p className="text-gray-500 font-semibold text-md text-center my-auto">Enter a stock symbol to get started.</p>}
+                : <EmptyStockDashboard />
+            }
         </div>
     );
 }
